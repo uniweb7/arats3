@@ -1,165 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" id="viewport-meta" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARATS - Premium OS v34 (Advanced PWA & Cloud)</title>
-    
-    <script>
-        // Safer global error handler: Log full details and show a non-destructive banner.
-        window.addEventListener('error', function(event) {
-            try {
-                console.error('Global error event:', event);
 
-                const details = event.error && (event.error.stack || event.error.message)
-                    ? (event.error.stack || event.error.message)
-                    : (event.message || 'No stack available. Check DevTools Console & Network tab for blocked/404 scripts.');
+    <!-- Diagnostic loader (temporary) -->
+    <script id="arats-diagnostics">
+      (function(){
+        try {
+          const urls = [
+            'https://unpkg.com/react@18/umd/react.development.js',
+            'https://unpkg.com/react-dom@18/umd/react-dom.development.js',
+            'https://unpkg.com/@babel/standalone/babel.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js',
+            'https://cdn.jsdelivr.net/npm/chart.js',
+            'https://cdn.tailwindcss.com',
+            'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
+            'https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js'
+          ];
 
-                // Don't overwrite the entire document — append a banner so DevTools still usable.
-                if (!document.getElementById('arats-error-banner')) {
-                    const banner = document.createElement('div');
-                    banner.id = 'arats-error-banner';
-                    banner.style = 'position:fixed;top:0;left:0;right:0;background:#fee2e2;color:#991b1b;padding:14px;z-index:9999999;border-bottom:4px solid #b91c1c;font-family:sans-serif;';
-                    banner.innerHTML = `<strong>⚠️ System Error Detected!</strong>
-                                        <div style="font-size:13px;margin-top:8px;">Issue: ${event.message || 'Script error'}</div>
-                                        <div style="font-size:12px;margin-top:6px;white-space:pre-wrap;max-height:160px;overflow:auto;background:#fff0f0;padding:8px;border-radius:6px;">${details}</div>
-                                        <div style="margin-top:6px;font-size:12px;color:#6b7280;">Tip: Open Developer Tools → Console & Network to see exact failing resource. If you are seeing "Script error" only, add <code>crossorigin="anonymous"</code> to your external scripts and ensure the CDN responds with CORS headers.</div>`;
-                    document.body.appendChild(banner);
-                }
-            } catch (e) {
-                // Fallback — avoid throwing from the error handler itself
-                console.error('Error inside error handler:', e);
-            }
-        });
+          // create panel
+          const panel = document.createElement('div');
+          panel.id = 'arats-diagnostics-panel';
+          panel.style = 'position:fixed;bottom:12px;right:12px;z-index:2147483647;background:#111827;color:#fff;padding:12px;border-radius:8px;font-family:system-ui,Arial,sans-serif;font-size:12px;max-width:380px;box-shadow:0 6px 20px rgba(2,6,23,.6)';
+          panel.innerHTML = '<div style="font-weight:800;margin-bottom:8px;">ARATS Diagnostics</div><div id="ad-status" style="max-height:220px;overflow:auto;margin-bottom:8px;"></div><div style="display:flex;gap:8px"><button id="ad-copy" style="flex:1;padding:6px 8px;border-radius:6px;border:0;background:#2563eb;color:#fff;font-weight:700;cursor:pointer;">Copy report</button><button id="ad-close" style="padding:6px 8px;border-radius:6px;border:0;background:#374151;color:#fff;font-weight:700;cursor:pointer;">Close</button></div>';
+          document.body.appendChild(panel);
+          const statusEl = document.getElementById('ad-status');
+          const results = [];
+
+          const addLine = (t) => { const el = document.createElement('div'); el.style.padding='6px 0'; el.innerHTML = t; statusEl.appendChild(el); };
+
+          let pending = urls.length;
+          urls.forEach(u => {
+            const s = document.createElement('script');
+            s.src = u;
+            s.crossOrigin = 'anonymous';
+            s.onload = function(){ results.push({url:u, ok:true}); addLine(`✅ ${u}`); pending--; if(pending===0) finish(); };
+            s.onerror = function(e){ results.push({url:u, ok:false}); addLine(`❌ ${u}`); pending--; if(pending===0) finish(); };
+            // do not append duplicate tags if already present
+            if (!document.querySelector('script[src="'+u+'"]')) document.head.appendChild(s);
+          });
+
+          function finish(){
+            const ok = results.filter(r=>r.ok).length;
+            const fail = results.filter(r=>!r.ok).length;
+            addLine(`<hr style="border:none;border-top:1px solid #374151;margin:6px 0">Summary: <b style=\"color:#34d399\">${ok} OK</b> | <b style=\"color:#fb7185\">${fail} Failed</b>`);
+            document.getElementById('ad-copy').onclick = ()=>{ navigator.clipboard && navigator.clipboard.writeText(JSON.stringify(results,null,2)); alert('Copied report to clipboard. Paste here.'); };
+            document.getElementById('ad-close').onclick = ()=>{ panel.remove(); };
+          }
+        } catch(ex) { console.error('Diagnostics failed:', ex); }
+      })();
     </script>
-
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon.png">
-    <meta name="theme-color" content="#1e3a8a">
-
-    <!-- Firebase (compat) with crossorigin to help get full stack traces when possible -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" crossorigin="anonymous"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js" crossorigin="anonymous"></script>
-
-    <script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'], serif: ['Merriweather', 'serif'], mono: ['Roboto Mono', 'monospace'] },
-                    colors: { 
-                        // NO BLACK THEME - Replaced with Royal/Deep Blue for premium feel
-                        governance: { 900: '#1e3a8a', 800: '#1e40af', 700: '#1d4ed8' } 
-                    },
-                    animation: { 
-                        'fade-in': 'fadeIn 0.4s ease-out', 
-                        'slide-up': 'slideUp 0.5s ease-out', 
-                        'pop-in': 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        'pulse-glow': 'pulseGlow 2s infinite'
-                    },
-                    keyframes: {
-                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-                        slideUp: { '0%': { opacity: '0', transform: 'translateY(30px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-                        popIn: { '0%': { opacity: '0', transform: 'scale(0.95)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
-                        pulseGlow: { '0%, 100%': { boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)' }, '50%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.8)' } }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- React & tools with crossorigin (helps avoid masked "Script error" when CDN provides CORS) -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&family=Roboto+Mono:wght@400;700&display=s[...]
-        
-        body { background-color: #f8fafc; font-family: 'Inter', sans-serif; user-select: none; margin: 0; padding: 0; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 10px; }
-        
-        .tap-effect:active { transform: scale(0.97); transition: transform 0.05s; }
-        .custom-checkbox { width: 1.5rem; height: 1.5rem; border-radius: 0.25rem; cursor: pointer; accent-color: #2563eb; transition: all 0.2s; }
-        
-        .three-d-box { background: linear-gradient(145deg, #ffffff, #f1f5f9); box-shadow: 6px 6px 12px #e2e8f0, -6px -6px 12px #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; transition: tran[...]
-        .three-d-box:hover { box-shadow: 8px 8px 16px #cbd5e1, -8px -8px 16px #ffffff; }
-        
-        .protocol-table th { background-color: #eff6ff; color: #1e3a8a; padding: 12px; text-transform: uppercase; font-size: 11px; font-weight: 900; border: 1px solid #bfdbfe; }
-        .protocol-table td { padding: 12px; border: 1px solid #dbeafe; font-size: 13px; font-weight: 600; color: #1e40af; }
-        
-        .a4-notice-paper { background: #fff; width: 100%; max-width: 600px; padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); border: 1px solid #ddd; margin: auto; position: relative; borde[...]
-        .external-app-container { width: 100vw; height: 100vh; border: none; position: fixed; top: 0; left: 0; z-index: 10000; background: #fff; }
-        
-        .activity-card { border-left: 5px solid transparent; transition: all 0.3s ease; }
-        .activity-card:hover { border-left-color: #3b82f6; background-color: #f8fafc; transform: translateX(4px); }
-        
-        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; } .no-print { display: none !important; } .three-d-box { box-shadow: none !important; bor[...]
-    </style>
-</head>
-<body>
-    <div id="root"></div>
-
-    <script>
-        // PWA SERVICE WORKER REGISTRATION (Advanced Setup)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('ARATS Service Worker Active!'))
-                    .catch(err => console.log('Service Worker Setup Pending', err));
-            });
-        }
-    </script>
-
-    <script type="text/babel">
-    const { useState, useEffect, useContext, createContext, useRef } = React;
-
-    const APP_VERSION = "34.0 (Advanced Cloud & Performance Edition)";
-    const DEV_USER = "Aryan Rajput";
-    const LEGAL_CONFIG = { ENFORCEMENT_DATE: "2025-12-29", SELF_CONTROL_HIDDEN_DAY: 15 };
-
-    // SYSTEM ICONS
-    const Icons = {
-        Back: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 19[...]/></svg>,
-        User: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 [...]/></svg>,
-        // ... rest of icons unchanged
-    };
-    // =========================================================================
-    // ☁️ FIREBASE CLOUD CONFIGURATION (REAL-TIME SYNC)
-    // =========================================================================
-    // Aryan Bhai: Yeh rahi aapki ORIGINAL Firebase Configuration jisme saara data safe hai.
-    const firebaseConfig = {
-        apiKey: "AIzaSyDYkEuGvrpGDnVbkjiUcQq18RPTbxGoQv0",
-        authDomain: "arats-governance-os.firebaseapp.com",
-        databaseURL: "https://arats-governance-os-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "arats-governance-os",
-        storageBucket: "arats-governance-os.firebasestorage.app",
-        messagingSenderId: "494924174266",
-        appId: "1:494924174266:web:1153e1744fb8e0f7664383"
-    };
-
-    let fbDB = null;
-    try {
-        if (window.firebase) {
-            firebase.initializeApp(firebaseConfig);
-            fbDB = firebase.database();
-            console.log("ARATS Official Cloud Sync Active ☁️");
-        } else {
-            console.log("ARATS Offline Mode Active 💾");
-        }
-    } catch(e) { console.error("Firebase Error:", e); }
-
-
-    // =========================================================================
-    // SYLLABUS & ACTIVITIES CONFIGURATION (CLEANED PERCENTAGES FROM SUB-ITEMS)
-    // =========================================================================
-    
-    // ... rest of the file unchanged ...
-
-    </script>
-</body>
-</html>
